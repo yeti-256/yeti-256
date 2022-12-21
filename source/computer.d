@@ -30,11 +30,12 @@ enum Instructions {
 	div = 0x06,
 	lco = 0x07,
 	crv = 0x08,
-	clo = 0x09,
 	and = 0x0A,
 	not = 0x0B,
 	xor = 0x0C,
 	orr = 0x0D,
+	jmp = 0x0E,
+	jnz = 0x0F,
 	hlt = 0xFF
 }
 
@@ -42,9 +43,11 @@ class Computer {
 	ubyte[256][256]      mem; // Array of memory banks
 	ubyte[Registers.len] reg;
 	bool                 alive;
+	bool                 increment;
 
 	this() {
 		alive             = true;
+		increment         = true;
 		reg[Registers.pb] = 4;
 	}
 
@@ -155,12 +158,6 @@ class Computer {
 				reg[GetParameter(1)] = reg[GetParameter(2)];
 				break;
 			}
-			case Instructions.clo: {
-				CheckValidRegister(GetParameter(1));
-
-				reg[GetParameter(1)] = GetParameter(2);
-				break;
-			}
 			case Instructions.and: {
 				CheckValidRegister(GetParameter(1));
 				CheckValidRegister(GetParameter(2));
@@ -188,6 +185,20 @@ class Computer {
 				reg[Registers.ac] = reg[GetParameter(1)] | reg[GetParameter(2)];
 				break;
 			}
+			case Instructions.jmp: {
+				reg[Registers.pb] = GetParameter(1);
+				reg[Registers.pc] = GetParameter(2);
+				increment         = false;
+				break;
+			}
+			case Instructions.jnz: {
+				if (reg[Registers.ac] != 0) {
+					reg[Registers.pb] = GetParameter(1);
+					reg[Registers.pc] = GetParameter(2);
+					increment         = false;
+				}
+				break;
+			}
 			case Instructions.hlt: {
 				alive = false;
 				return;
@@ -199,13 +210,18 @@ class Computer {
 
 		// increment
 		//writefln("Before: pb = %d, pc = %d", reg[Registers.pb], reg[Registers.pc]);
-		if ((cast (int) reg[Registers.pc]) + 3 > 255) {
-			++ reg[Registers.pb];
-			reg[Registers.pc] =
-				cast (ubyte) (((cast (int) reg[Registers.pc]) + 3) - 256);
+		if (increment) {
+			if ((cast (int) reg[Registers.pc]) + 3 > 255) {
+				++ reg[Registers.pb];
+				reg[Registers.pc] =
+					cast (ubyte) (((cast (int) reg[Registers.pc]) + 3) - 256);
+			}
+			else {
+				reg[Registers.pc] += 3;
+			}
 		}
 		else {
-			reg[Registers.pc] += 3;
+			increment = true;
 		}
 		//writefln("After: pb = %d, pc = %d", reg[Registers.pb], reg[Registers.pc]);
 	}
